@@ -28,6 +28,7 @@ add_project_arguments(
         '-Wno-padded',
         '-Wno-cast-qual',
 		'-Wno-cast-align',
+		'-Wno-date-time',
 	],
 	language: 'c',
 )
