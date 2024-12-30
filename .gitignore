@@ -1,0 +1,6 @@
+test/
+build/
+build-*/
+.cache/
+.vscode/
+vgcore.*

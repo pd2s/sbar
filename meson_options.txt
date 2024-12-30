@@ -1,0 +1,19 @@
+option(
+	'PNG_image_blocks',
+	type: 'feature',
+)
+option(
+	'SVG_image_blocks',
+	type: 'feature',
+)
+option(
+	'swaybar_example',
+	type: 'boolean',
+	value: false,
+)
+option(
+    'swaybar_example_sd_bus_provider',
+    type: 'combo',
+    choices: ['auto', 'libsystemd', 'libelogind', 'basu'],
+    value: 'auto',
+)

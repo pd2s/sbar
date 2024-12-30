@@ -1,0 +1,302 @@
+#!/usr/bin/python3
+
+import subprocess, json, signal
+
+# All communication with sbar is done by writing json objects(see to_sbar)
+# separated by a newline to sbar's stdin
+# and reading state events(see from_sbar) from sbar's stdout
+
+sbar = subprocess.Popen(["sbar"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+)
+
+to_sbar = {
+	# All possible keys and their default values are listed below.
+	# If a key marked REQUIRED is missing or its value is of the wrong data type,
+	# an error will be returned in the next state event.
+	# If any other key is missing or its value is of the wrong data type, the default value will be used.
+
+	"state_events" : True, # type: bool, default: false
+
+	# This is passed as-is back to the client in subsequent state events.
+	"userdata" : 0, # type: any except null
+
+	# Also, object may contain multiple key/value pairs
+	# where key is the output name string and value is an array of objects.
+	# You can get output names from sbar state events or by reading wayland globals directly.
+	# For example, to list all available outputs from terminal use the following command:
+	# $ wayland-info -i wl_output
+
+	# In this example, a single bar will be created on output "HDMI-A-1"
+	"HDMI-A-1" : [ # type: array
+		{ # type: object
+			"width" : None, # type: int > 0. default: auto
+			"height" : None, # type: int > 0. default: auto
+
+			# See https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:request:set_exclusive_zone
+			"exclusive_zone" : None, # type: int >= 0. default: auto
+
+			# Bar position.
+			"anchor" : 2, # type: int (see enum sbar_bar_anchor in /include/sbar.h), default: 2(bottom)
+
+			# See https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_shell_v1:enum:layer
+			"layer" : 3, # type: int (see enum sbar_bar_layer in /include/sbar.h), default: 3(top)
+
+			# See https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:request:set_margin
+			"margin_top" : 0, # type: int >= 0. default: 0
+			"margin_right" : 0,
+			"margin_bottom" : 0,
+			"margin_left" : 0,
+
+			"cursor_shape" : 0, # type: int (see enum sbar_surface_cursor_shape in /include/sbar.h), default: 1(default)
+
+			"render" : True, # type: bool. default: true
+
+			# See https://wayland.app/protocols/wayland#wl_surface:request:set_input_region
+			"input_regions" : [ # type: array
+				{ # type: object
+					"x" : 0, # type: int. default: 0
+					"y" : 0, # type: int. default: 0
+					"width" : 0, # type: int. default: 0
+					"height" : 0, # type: int. default: 0
+				},
+			],
+
+			# This is passed as-is back to the client in state events with "surface_userdata"
+			"userdata" : 0, # type: any except null
+
+			"blocks" : [ # type: array
+				{ # type: object
+					# All keys in this block are valid for all block types.
+
+					"type" : 1, # type: int (see enum sbar_block_type in /include/sbar.h), default: 1(spacer)
+
+					"anchor" : 6, # type: int (see enum sbar_block_anchor in /include/sbar.h), default: 4(left)
+
+					# bg color. ARGB32
+					"color" : 0xFF000000, # type: int. default: 0
+
+					"render" : True, # type: bool. default: true
+
+					# The value must be >= 0 or set by SBAR_BLOCK_SIZE_OFFSET macro.
+					# See enum sbar_block_size and macro SBAR_BLOCK_SIZE_OFFSET in /include/sbar.h
+					"min_width" : 0, # type: int. default: 0(auto)
+					"max_width" : 0,
+					"min_height" : 0,
+					"max_height" : 0,
+					"content_width" : 0,
+					"content_height" : 0,
+
+					"content_transform" : 1, # type: int (see enum sbar_block_content_transform in /include/sbar.h). default: 1(normal)
+
+					# content anchor inside the block
+					"content_anchor" : 2, # type: int (see enum sbar_block_content_anchor in /include/sbar.h). default: 2(left center)
+
+					"border_left" : { # type: object
+						"width" : 0, # type: int >= 0. default: 0
+
+						# ARGB32
+						"color" : 0, # type: int. default: 0
+					},
+					"border_right" : {
+						"width" : 0,
+						"color" : 0,
+					},
+					"border_bottom" : {
+						"width" : 0,
+						"color" : 0,
+					},
+					"border_top" : {
+						"width" : 0,
+						"color" : 0,
+					},
+
+					# Ignored for blocks that are not a part of composite block.
+					"x" : None, # type: int >= 0
+					"y" : None, # type: int >= 0
+
+
+					"id" : None, # type: int > 0
+				},
+				{
+					"type" : 2,
+
+					# Ignored if "type" is not 2(text):
+
+					"text" : "This is a bar", # type: string. REQUIRED
+
+					# FontConfig formatted font names. The first element is the primary font, and the
+       				# remaining elements (if any) are fallback fonts.
+					# 'monospace:size=16' is always used as a fallback font.
+					"font_names" : [  ], # type: array of strings. default: [ "monospace:size=16" ]
+
+					# Convenient way to apply a set of attributes to all fonts in "font_names".
+					"font_attributes" : None, # type: string or null. default: null
+
+					# ARGB32.
+					"text_color" : 0xFFFFFFFF, # type: int. default: 0xFFFFFFFF.
+				},
+				{
+					"type" : 3,
+
+					# Ignored if "type" is not 3(image):
+
+					"path" : "", # type: string. REQUIRED
+
+					"image_type" : 1, # type: int (see enum sbar_block_type_image_image_type in /include/sbar.h). default: 1(pixmap)
+				},
+				{
+					"color" : 0xFFFF0000,
+					"type" : 4,
+
+					# Ignored if "type" is not 4(composite):
+
+					"blocks" : [ # type: array of objects. REQUIRED
+						{
+							"type" : 2,
+							"text" : "This is the first block in a composite block",
+						},
+						{
+							"type" : 2,
+							"anchor" : 3,
+							"text" : "This is the second block in a composite block",
+						},
+					],
+				},
+			],
+
+			# See https://wayland.app/protocols/xdg-shell#xdg_popup
+			"popups" : [ # type: array
+				{ # type: object
+					"x" : 100, # type: int. REQUIRED
+					"y" : 0, # type: int. REQUIRED
+
+					"width" : None, # type: int >= 0. default: auto
+					"height" : None, # type: int >= 0. default: auto
+
+					# Whether to use vertical or horizontal block layout.
+					"vertical" : True, # type: bool. default: true
+
+					# See https://wayland.app/protocols/xdg-shell#xdg_positioner:request:set_gravity
+					"gravity" : 8, # type: int (see enum sbar_popup_gravity in /include/sbar.h). default: 1(none)
+
+					# See https://wayland.app/protocols/xdg-shell#xdg_positioner:request:set_constraint_adjustment
+					"constraint_adjustment" : 0, # type: int (bitmask of )(see enum sbar_popup_constraint_adjustment in /include/sbar.h). default: 0(none)
+
+					# See https://wayland.app/protocols/xdg-shell#xdg_popup:request:grab
+					# The grab is automatically inherited from the parent popup, if it has one.
+					# The value must be in range of the last 256 "serial" from the state events.
+					"grab" : None, # type int >= 0.
+
+					"render" : True, # type: bool. default: true
+
+					"cursor_shape" : 0, # type: int (see enum sbar_surface_cursor_shape in /include/sbar.h), default: 1(default)
+
+					"input_regions" : [], # type: array of objects
+
+					# This is passed as-is back to the client in state events with "surface_userdata"
+					"userdata" : 0, # type: any except null
+
+					"popups" : [], # type: array of objects
+
+					"blocks" : [ # type: array of objects
+						{
+							"color" : 0xFF323232,
+							"type" : 2,
+							"text" : "This is the first block in the popup"
+						},
+						{
+							"color" : 0xFF323232,
+							"type" : 2,
+							"text" : "This is the second block in the popup"
+						},
+					],
+				},
+			],
+		},
+	],
+}
+
+from_sbar = {
+    "userdata" : 0, # type: any
+
+    "outputs" : [ # type: array
+        { # type: object
+            "name" : "HDMI-A-1", # type: string
+            "width" : 1920, # type: int
+            "height" : 1080, # type: int
+            "scale" : 1, # type: int
+            "transform" : 0, # type: int (see enum sbar_output_transform in /include/sbar.h)
+            "bars" : [ # type: array
+                { # type object or null
+                    "width" : 1920, # type: int
+                    "height" : 46, # type: int
+                    "scale" : 1, # type: int
+                    "blocks" : [ # type: array
+                        { # type: object or null
+                            "x" : 0, # type: int
+                            "y" : 0, # type: int
+                            "width" : 1920, # type: int
+                            "height" : 46, # type: int
+                        },
+                        # ...
+                    ],
+                    "popups" : [ # type: array
+                        { # type: object or null
+                            "width" : 370, # type: int
+                            "height" : 46, # type: int
+                            "scale" : 1, # type: int
+                            "blocks" : [
+								# ...
+                            ],
+                            "popups" : [],
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "name" : "DP-1",
+            "width" : 2560,
+            "height" : 1440,
+            "scale" : 1,
+            "transform" : 0,
+            "bars" : [],
+        },
+    ],
+
+    "seats" : [ # type: array
+        { # type: object
+            "name" : "seat0", # type: string
+            "pointer" : { # type: object or null
+                "focus" : { # type: object or null
+                    "surface_userdata" : 0, # type: any
+                    "x" : 305.25, # type: double
+                    "y" : 0.6171875, # type: double
+                },
+                "button" : { # type: object or null
+					"code" : 272, # type: int
+					"state" : 0, # type: int
+					"serial" : 6966, # type: int
+				},
+                "scroll": { # type: object or null
+					"axis" : 0, # type: int (see enum sbar_pointer_axis in /include/sbar.h)
+					"vector_length" : 15.0, # type: double
+				},
+            },
+        },
+    ],
+}
+
+def signal_handler(s, f):
+    exit()
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+sbar.stdin.write((json.dumps(to_sbar) + "\n").encode())
+sbar.stdin.flush()
+
+while True:
+	print("received state event from sbar:\n" + sbar.stdout.readline().decode())
